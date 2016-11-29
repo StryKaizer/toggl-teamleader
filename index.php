@@ -15,10 +15,6 @@ $connectionParams = array(
 $conn = \Doctrine\DBAL\DriverManager::getConnection($connectionParams, $config);
 
 
-//$d = '2016-11-25T12:35:57+01:00';
-//print(strtotime($d) + 3600);
-//
-//die();
 
 $toggl_items = fetch_toggl_items();
 foreach ($toggl_items as $item) {
@@ -39,7 +35,7 @@ foreach ($toggl_items as $item) {
     echo "Already imported: $item->description<br>";
   }
 }
-print_r($result);
+print_r($toggl_items);
 
 
 function fetch_toggl_items() {
@@ -80,8 +76,8 @@ function create_teamleader_timetracking($toggl_item) {
   $form_params['task_type_id'] = TEAMLEADER_API_TASK_TYPE_ID;
 
   $form_params['description'] = $toggl_item->description;
-  $form_params['start_date'] = 1480453833;
-  $form_params['end_date'] = 1480458833;
+  $form_params['start_date'] = strtotime($toggl_item->start);
+  $form_params['end_date'] = strtotime($toggl_item->end);
 
   $form_params['invoiceable'] = 1;
   $form_params['for'] = 'company';
@@ -96,7 +92,6 @@ function create_teamleader_timetracking($toggl_item) {
 
 function is_already_imported($toggl_id) {
   global $conn;
-
   $sql = "SELECT * FROM mapping WHERE toggl_id = ?";
   $stmt = $conn->prepare($sql);
   $stmt->bindValue(1, $toggl_id);

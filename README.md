@@ -6,6 +6,7 @@ Simple php script which imports toggl time entries for a specific project into t
 ## Installation
 
 Copy default.config.php to config.php and alter variables
+
 Create a database and run sql below
 
     CREATE TABLE `mapping` (
@@ -16,7 +17,6 @@ Create a database and run sql below
 
     ALTER TABLE `mapping`
     ADD PRIMARY KEY (`toggl_id`);
-    
-    
-    
+  
+-    
 Created by StryKaizer (Jimmy Henderickx)
