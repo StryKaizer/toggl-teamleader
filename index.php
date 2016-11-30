@@ -15,30 +15,35 @@ $connectionParams = array(
 $conn = \Doctrine\DBAL\DriverManager::getConnection($connectionParams, $config);
 
 
+foreach($mapping as $toggl_project_id => $teamleader_company_id){
+  $toggl_items = fetch_toggl_items($toggl_project_id);
+  foreach ($toggl_items as $item) {
+    if (!is_already_imported($item->id)) {
 
-$toggl_items = fetch_toggl_items();
-foreach ($toggl_items as $item) {
-  if (!is_already_imported($item->id)) {
+      echo "Import: $item->description<br>";
 
-    echo "Import: $item->description<br>";
+      create_teamleader_timetracking($item, $teamleader_company_id);
 
-    create_teamleader_timetracking($item);
+      $conn->insert('mapping', array(
+        'toggl_id' => $item->id,
+        'toggl_project_id' => $item->pid,
+        'description' => $item->description
+      ));
 
-    $conn->insert('mapping', array(
-      'toggl_id' => $item->id,
-      'toggl_project_id' => $item->pid,
-      'description' => $item->description
-    ));
-
-  }
-  else {
-    echo "Already imported: $item->description<br>";
+    }
+    else {
+      echo "Already imported: $item->description<br>";
+    }
   }
 }
-print_r($toggl_items);
 
 
-function fetch_toggl_items() {
+/**
+ * Fetch all toggl items (of last 6 days) for a specific project id.
+ * @param $toggl_project_id
+ * @return mixed
+ */
+function fetch_toggl_items($toggl_project_id) {
   $toggl_client = new Client([
     'base_uri' => TOGGL_REPORTS_API_URL,
     'timeout' => 2.0,
@@ -46,7 +51,7 @@ function fetch_toggl_items() {
   $query = [];
   $query['user_agent'] = TOGGL_REPORTS_API_USER_AGENT;
   $query['workspace_id'] = TOGGL_REPORTS_API_WORKSPACE_ID;
-  $query['project_ids'] = TOGGL_REPORTS_API_PROJECT_ID;
+  $query['project_ids'] = $toggl_project_id;
 
   $response = $toggl_client->request('GET', 'details', [
     'query' => $query,
@@ -60,7 +65,12 @@ function fetch_toggl_items() {
   return $result->data;
 }
 
-function create_teamleader_timetracking($toggl_item) {
+/**
+ * Create a timetracking entity in teamleader.
+ * @param $toggl_item
+ * @param $teamleader_company_id
+ */
+function create_teamleader_timetracking($toggl_item, $teamleader_company_id) {
 
 // Post to teamleader
   $teamleader_client = new Client([
@@ -81,7 +91,7 @@ function create_teamleader_timetracking($toggl_item) {
 
   $form_params['invoiceable'] = 1;
   $form_params['for'] = 'company';
-  $form_params['for_id'] = TEAMLEADER_API_COMPANY_ID;
+  $form_params['for_id'] = $teamleader_company_id;
 
   $response = $teamleader_client->request('POST', 'addTimetracking.php', ['form_params' => $form_params]);
 
@@ -89,7 +99,11 @@ function create_teamleader_timetracking($toggl_item) {
   echo $body;
 }
 
-
+/**
+ * Check if the toggl item is already imported.
+ * @param $toggl_id
+ * @return bool
+ */
 function is_already_imported($toggl_id) {
   global $conn;
   $sql = "SELECT * FROM mapping WHERE toggl_id = ?";
